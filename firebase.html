@@ -17,17 +17,37 @@
     }
     .card {
       background: rgba(255, 255, 255, 0.9);
-      padding: 40px 50px;
+      padding: 30px 40px;
       border-radius: 20px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
       text-align: center;
       z-index: 10;
       backdrop-filter: blur(5px);
+      width: 320px;
     }
-    h2 { color: #333; margin-bottom: 20px; }
+    h2 { color: #333; margin-bottom: 15px; }
+    .btn-container {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+    .email-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    input {
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+    }
     button {
-      padding: 14px 28px;
-      font-size: 16px;
+      padding: 12px 20px;
+      font-size: 14px;
       font-weight: bold;
       border: none;
       border-radius: 10px;
@@ -35,10 +55,12 @@
       transition: all 0.2s ease;
     }
     button:hover { transform: scale(1.05); }
-    #btn-login { background-color: #24292e; color: white; }
-    #btn-logout { background-color: #ff4d4d; color: white; display: none; }
+    #btn-login { background-color: #24292e; color: white; width: 50%; }
+    #btn-google-login { background-color: #4285f4; color: white; width: 50%; }
+    #btn-email-login { background-color: #4caf50; color: white; }
+    #btn-email-register { background-color: #ff9800; color: white; }
+    #btn-logout { background-color: #ff4d4d; color: white; display: none; margin: 0 auto; width: 100%; }
     
-    /* Анимация летящих чертиков */
     .devil {
       position: absolute;
       bottom: -60px;
@@ -58,17 +80,43 @@
 
   <div class="card">
     <h2 id="user-info">Вы не вошли в систему</h2>
-    <button id="btn-login">Войти через GitHub</button>
+    
+    <div id="auth-forms">
+      <!-- Кнопки OAuth -->
+      <div class="btn-container">
+        <button id="btn-login">GitHub</button>
+        <button id="btn-google-login">Google</button>
+      </div>
+
+      <!-- Почта и Пароль -->
+      <div class="email-container">
+        <input type="email" id="input-email" placeholder="Email">
+        <input type="password" id="input-password" placeholder="Пароль">
+        <div class="btn-container">
+          <button id="btn-email-login" style="width: 50%;">Войти</button>
+          <button id="btn-email-register" style="width: 50%;">Регистрация</button>
+        </div>
+      </div>
+    </div>
+
     <button id="btn-logout">Выйти</button>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithPopup, GithubAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { 
+      getAuth, 
+      signInWithPopup, 
+      GithubAuthProvider, 
+      GoogleAuthProvider, 
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      signOut, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // Укажите ваши ключи из настроек Firebase Console (Вкладка General)
     const firebaseConfig = {
-      apiKey:"AIzaSyBJvlxtk4Lmo1iZvTzgHw7P96tOUggVGOs",
+      apiKey: "AIzaSyBJvlxtk4Lmo1iZvTzgHw7P96tOUggVGOs",
       authDomain: "lalka-2aeab.firebaseapp.com",
       projectId: "lalka-2aeab",
       storageBucket: "lalka-2aeab.firebasestorage.app",
@@ -78,39 +126,66 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const provider = new GithubAuthProvider();
+    
+    const githubProvider = new GithubAuthProvider();
+    const googleProvider = new GoogleAuthProvider();
 
+    const authForms = document.getElementById("auth-forms");
+    const inputEmail = document.getElementById("input-email");
+    const inputPassword = document.getElementById("input-password");
+    
     const btnLogin = document.getElementById("btn-login");
+    const btnGoogleLogin = document.getElementById("btn-google-login");
+    const btnEmailLogin = document.getElementById("btn-email-login");
+    const btnEmailRegister = document.getElementById("btn-email-register");
     const btnLogout = document.getElementById("btn-logout");
     const userInfo = document.getElementById("user-info");
 
-    btnLogin.addEventListener("click", () => signInWithPopup(auth, provider).catch(err => alert("Ошибка: " + err.message)));
+    // Вход через провайдеров
+    btnLogin.addEventListener("click", () => signInWithPopup(auth, githubProvider).catch(err => alert(err.message)));
+    btnGoogleLogin.addEventListener("click", () => signInWithPopup(auth, googleProvider).catch(err => alert(err.message)));
+
+    // Вход по почте
+    btnEmailLogin.addEventListener("click", () => {
+      signInWithEmailAndPassword(auth, inputEmail.value, inputPassword.value)
+        .catch(err => alert("Ошибка входа: " + err.message));
+    });
+
+    // Регистрация по почте
+    btnEmailRegister.addEventListener("click", () => {
+      createUserWithEmailAndPassword(auth, inputEmail.value, inputPassword.value)
+        .then(() => alert("Вы успешно зарегистрировались!"))
+        .catch(err => alert("Ошибка регистрации: " + err.message));
+    });
+
     btnLogout.addEventListener("click", () => signOut(auth));
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        userInfo.textContent = `Привет, ${user.displayName || 'Пользователь'}! 😈`;
-        btnLogin.style.display = "none";
+        userInfo.textContent = `Привет, ${user.displayName || user.email}! 😈`;
+        authForms.style.display = "none";
         btnLogout.style.display = "block";
       } else {
         userInfo.textContent = "Вы не вошли в систему";
-        btnLogin.style.display = "block";
+        authForms.style.display = "block";
         btnLogout.style.display = "none";
+        inputEmail.value = "";
+        inputPassword.value = "";
       }
     });
 
-    // Генерация летящих чертиков
+    // Анимация
     function createDevil() {
       const dev = document.createElement('div');
       dev.className = 'devil';
       dev.innerText = '😈';
       dev.style.left = Math.random() * 100 + 'vw';
       dev.style.fontSize = Math.random() * 25 + 20 + 'px';
-      dev.style.animationDuration = Math.random() * 4 + 4 + 's'; // разная скорость
+      dev.style.animationDuration = Math.random() * 4 + 4 + 's';
       document.body.appendChild(dev);
-      setTimeout(() => dev.remove(), 8000); // чистим память
+      setTimeout(() => dev.remove(), 8000);
     }
-    setInterval(createDevil, 500); // создавать чертика каждые полсекунды
+    setInterval(createDevil, 500);
   </script>
 </body>
 </html>
